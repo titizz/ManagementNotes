@@ -15,8 +15,16 @@ struct TextRecognizer {
                     .joined(separator: "\n") ?? ""
                 continuation.resume(returning: recognizedStrings)
             }
+            // Configure for optimal text recognition including handwritten text
             request.recognitionLevel = .accurate
             request.usesLanguageCorrection = true
+            request.automaticallyDetectsLanguage = true
+            
+            // Enable recognition of both printed and handwritten text
+            // This supports handwritten text detection on iOS 14+
+            if #available(iOS 14.0, *) {
+                request.recognitionLanguages = ["en-US", "fr-FR", "es-ES", "de-DE", "it-IT", "pt-BR"]
+            }
 
             let requestHandler = VNImageRequestHandler(cgImage: cgImage, options: [:])
             do {
