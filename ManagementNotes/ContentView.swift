@@ -16,6 +16,7 @@ struct ContentView: View {
     @State private var isProcessing = false
     @State private var alertInfo: AlertInfo?
     private let textRecognizer = TextRecognizer()
+    private let aiService = AppleIntelligenceService()
 
     var body: some View {
         NavigationStack {
@@ -33,7 +34,19 @@ struct ContentView: View {
                                 NoteDetailView(item: item)
                             } label: {
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(item.text.isEmpty ? "No text recognized" : item.text)
+                                    // Show category badge if available
+                                    if let category = item.category {
+                                        Text(category)
+                                            .font(.caption2)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(Color.blue.opacity(0.2))
+                                            .foregroundColor(.blue)
+                                            .clipShape(Capsule())
+                                    }
+                                    
+                                    // Show summary if available, otherwise show original text
+                                    Text(item.summary ?? (item.text.isEmpty ? "No text recognized" : item.text))
                                         .font(.body)
                                         .lineLimit(2)
                                     Text(item.createdAt, format: Date.FormatStyle(date: .numeric, time: .shortened))
@@ -48,7 +61,7 @@ struct ContentView: View {
                 .disabled(isProcessing)
 
                 if isProcessing {
-                    ProgressView("Extracting text…")
+                    ProgressView("Analyzing with Apple Intelligence…")
                         .padding(24)
                         .background(.regularMaterial)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -99,8 +112,22 @@ struct ContentView: View {
             }
 
             let imageData = image.jpegData(compressionQuality: 0.8)
+            
+            // Use Apple Intelligence to analyze the text
+            let summary = aiService.summarize(text: cleanedText)
+            let keyPoints = aiService.extractKeyPoints(from: cleanedText)
+            let category = aiService.classifyText(cleanedText)
+            let language = aiService.detectLanguage(in: cleanedText)
+            let sentiment = aiService.analyzeSentiment(of: cleanedText)
+            let enhancedText = aiService.enhanceText(cleanedText)
+            
             await MainActor.run {
-                let item = Item(text: cleanedText, createdAt: .now, imageData: imageData)
+                let item = Item(text: enhancedText, createdAt: .now, imageData: imageData)
+                item.summary = summary
+                item.keyPoints = keyPoints
+                item.category = category
+                item.detectedLanguage = language
+                item.sentiment = sentiment
                 modelContext.insert(item)
                 isProcessing = false
             }
